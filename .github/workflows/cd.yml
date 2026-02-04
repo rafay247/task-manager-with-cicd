@@ -1,0 +1,64 @@
+# This workflow handles the Continuous Deployment (CD) process.
+# it automates the creation of production-ready artifacts after successful merges.
+name: CD Pipeline
+
+on:
+  # Trigger the CD pipeline when code is pushed to the main branch
+  push:
+    branches: [ main ]
+    # Also trigger when a version tag (e.g., v1.0.0) is created
+    tags:
+      - 'v*'
+
+jobs:
+  # The 'deploy' job prepares everything needed for a production deployment
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build production image
+      # Build the final Docker image with specific tags
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: false # In a real-world scenario, you would set this to true and login to a registry
+        tags: |
+          task-manager-api:latest
+          task-manager-api:${{ github.sha }}
+        # Export the image as a tarball for easy distribution/archiving
+        outputs: type=docker,dest=/tmp/image.tar
+    
+    - name: Save Docker image
+      # Upload the Docker image tarball as a GitHub artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: docker-image
+        path: /tmp/image.tar
+    
+    - name: Create deployment package
+      # Prepare the orchestration files and environment variables for deployment
+      run: |
+        mkdir -p deployment
+        cp docker-compose.yml deployment/
+        # Pin the image tag to the specific commit SHA to ensure consistency
+        echo "IMAGE_TAG=${{ github.sha }}" > deployment/.env
+    
+    - name: Upload deployment artifacts
+      # Upload the configuration folder as a GitHub artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: deployment-package
+        path: deployment/
+    
+    - name: Deploy notification
+      # Final summary of the deployment preparation
+      run: |
+        echo "🚀 Deployment artifacts created successfully!"
+        echo "Image tag: ${{ github.sha }}"
+        echo "Ready for deployment to your local environment"

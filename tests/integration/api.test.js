@@ -1,12 +1,22 @@
+/**
+ * Integration tests for the Task API.
+ * These tests verify the connectivity between the API endpoints, controllers, and the Task model
+ * by making actual HTTP requests using supertest.
+ */
 const request = require('supertest');
 const app = require('../../src/app');
 const Task = require('../../src/models/task');
 
 describe('Task API Endpoints', () => {
+    // Clean up the task repository before each test to ensure a clean state
     beforeEach(() => {
         Task.reset();
     });
 
+    /**
+     * Testing the Health Check endpoint.
+     * This ensures the server is running and responding correctly at the base level.
+     */
     describe('GET /health', () => {
         test('should return healthy status', async () => {
             const res = await request(app).get('/health');
@@ -15,7 +25,12 @@ describe('Task API Endpoints', () => {
         });
     });
 
+    /**
+     * Testing the Task Creation endpoint.
+     * Verifies both successful creation and validation error handling (missing title).
+     */
     describe('POST /api/tasks', () => {
+        // Success case: Title and description provided
         test('should create a new task', async () => {
             const res = await request(app)
                 .post('/api/tasks')
@@ -26,6 +41,7 @@ describe('Task API Endpoints', () => {
             expect(res.body.data.title).toBe('New Task');
         });
 
+        // Failure case: Missing title should trigger a 400 Bad Request
         test('should return 400 if title is missing', async () => {
             const res = await request(app)
                 .post('/api/tasks')
@@ -36,8 +52,12 @@ describe('Task API Endpoints', () => {
         });
     });
 
+    /**
+     * Testing the retrieval of all tasks.
+     */
     describe('GET /api/tasks', () => {
         test('should get all tasks', async () => {
+            // Seed the data for the test
             Task.create('Task 1', 'Desc 1');
             Task.create('Task 2', 'Desc 2');
 
@@ -47,7 +67,11 @@ describe('Task API Endpoints', () => {
         });
     });
 
+    /**
+     * Testing specific task retrieval by ID.
+     */
     describe('GET /api/tasks/:id', () => {
+        // Success case: ID exists
         test('should get task by id', async () => {
             const task = Task.create('Find Me', 'Description');
             const res = await request(app).get(`/api/tasks/${task.id}`);
@@ -56,12 +80,16 @@ describe('Task API Endpoints', () => {
             expect(res.body.data.title).toBe('Find Me');
         });
 
+        // Failure case: Non-existent ID returns 404 Not Found
         test('should return 404 for non-existent task', async () => {
             const res = await request(app).get('/api/tasks/999');
             expect(res.statusCode).toBe(404);
         });
     });
 
+    /**
+     * Testing the update functionality of the task API.
+     */
     describe('PUT /api/tasks/:id', () => {
         test('should update task', async () => {
             const task = Task.create('Original', 'Desc');
@@ -75,6 +103,9 @@ describe('Task API Endpoints', () => {
         });
     });
 
+    /**
+     * Testing the deletion functionality of the task API.
+     */
     describe('DELETE /api/tasks/:id', () => {
         test('should delete task', async () => {
             const task = Task.create('Delete Me', 'Desc');
